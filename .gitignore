@@ -1,0 +1,65 @@
+# --- Virtual environment ---
+venv/
+env/
+.venv/
+
+# --- Python cache/build artifacts ---
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+
+# --- Sensitive / personal data (DO NOT COMMIT) ---
+# Real face photos of real people should never be pushed to a public repo.
+known_faces/*
+!known_faces/.gitkeep
+!known_faces/README.md
+
+# Generated face encodings (derived from private photos)
+encodings.pickle
+
+# Attendance logs contain names + timestamps of real people
+attendance.csv
+
+# --- OS/editor junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Environment/config files that might hold secrets ---
+.env# --- Virtual environment ---
+venv/
+env/
+.venv/
+
+# --- Python cache/build artifacts ---
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+
+# --- Sensitive / personal data (DO NOT COMMIT) ---
+# Real face photos of real people should never be pushed to a public repo.
+known_faces/*
+!known_faces/.gitkeep
+!known_faces/README.md
+
+# Generated face encodings (derived from private photos)
+encodings.pickle
+
+# Attendance logs contain names + timestamps of real people
+attendance.csv
+
+# --- OS/editor junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Environment/config files that might hold secrets ---
+.env
