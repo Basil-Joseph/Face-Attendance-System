@@ -5,7 +5,6 @@ via webcam and logs attendance automatically — built with **OpenCV** and
 **face_recognition**.
 
 ![Python](https://img.shields.io/badge/python-3.12-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-learning%20project-yellow)
 
 ---
@@ -13,7 +12,19 @@ via webcam and logs attendance automatically — built with **OpenCV** and
 ## ⚠️ Privacy Notice
 
 This project works with **face photos and attendance logs of real
-people**. Before using or sharing this repo.
+people**. Before using or sharing this repo:
+
+- **Never commit real face photos** (`known_faces/`) or generated
+  data (`encodings.pickle`, `attendance.csv`) to GitHub — they are
+  excluded via `.gitignore` by default. Keep them local only.
+- Only enroll people who have **given consent** to have their face
+  data stored and processed.
+- If deploying this beyond a personal learning project (e.g. for a
+  classroom, office, or club), check your local data protection laws
+  regarding biometric data (e.g. GDPR, DPDP Act) before collecting
+  anyone else's face data.
+- Treat `encodings.pickle` as sensitive — it's a mathematical
+  fingerprint of someone's face and can't be freely shared either.
 
 ---
 
@@ -65,12 +76,20 @@ pip install https://github.com/z-mahmud22/Dlib_Windows_Python3.x/raw/main/dlib-1
 (macOS/Linux users can usually just `pip install dlib` directly.)
 
 ### 5. Add your known faces
+For best accuracy, use a **folder per person with 2-4 photos** (different
+angles/lighting):
 ```
 known_faces/
-├── alice.jpg
-├── bob.jpg
+├── alice/
+│   ├── photo1.jpg
+│   └── photo2.jpg
+└── bob/
+    ├── photo1.jpg
+    └── photo2.jpg
 ```
-See `known_faces/README.md` for details. **Do not commit these photos.**
+A single flat photo per person (`known_faces/alice.jpg`) still works too,
+just less accurately across pose/lighting changes. See
+`known_faces/README.md` for details. **Do not commit these photos.**
 
 ### 6. Generate encodings
 ```bash
@@ -112,7 +131,7 @@ Common issues encountered during setup, and fixes:
 | `Please install face_recognition_models` | `pip install face_recognition_models` |
 | `ModuleNotFoundError: No module named 'pkg_resources'` | `pip install "setuptools<81"` |
 | `RuntimeError: Unsupported image type, must be 8bit gray or RGB image` | Your numpy version is likely incompatible with the compiled dlib wheel — run `pip install "numpy<2"` |
-| Recognizes one photo but not other poses of the same person | Add 2–4 reference photos per person (different angles/lighting) instead of just one, and/or raise `MATCH_TOLERANCE` slightly in `attendance.py` |
+| Recognizes one photo but not other poses of the same person | Use the folder-per-person structure with 2–4 photos (see step 5) and/or raise `MATCH_TOLERANCE` slightly in `attendance.py` |
 
 ---
 
@@ -127,16 +146,5 @@ MATCH_TOLERANCE = 0.6
 
 ---
 
-## 🚀 Possible Extensions
 
-- Multiple reference photos per person for better accuracy
-- SQLite instead of CSV for attendance storage
-- Check-in **and** check-out timestamps
-- Simple GUI (Tkinter or a web dashboard)
-- Export attendance reports (daily/weekly/monthly)
 
----
-
-## 📄 License
-
-MIT — free to use and modify for personal/educational purposes.
