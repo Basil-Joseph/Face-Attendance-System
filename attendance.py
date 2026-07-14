@@ -12,6 +12,13 @@ ENCODINGS_FILE = "encodings.pickle"
 ATTENDANCE_FILE = "attendance.csv"
 MATCH_TOLERANCE = 0.6  # lower = stricter matching. 0.6 is a good default.
 
+# Minimum minutes that must pass after check-in before a check-out can be
+# recorded. This prevents check-out from firing seconds after check-in due
+# to consecutive camera frames recognizing the same person.
+CHECKOUT_MIN_GAP_MINUTES = 5
+
+CSV_HEADER = ["Name", "Date", "CheckIn", "CheckOut"]
+
 
 def load_encodings():
     if not os.path.exists(ENCODINGS_FILE):
@@ -23,39 +30,100 @@ def load_encodings():
     return data["encodings"], data["names"]
 
 
-def already_marked_today(name):
-    """Check if this person already has an attendance entry for today."""
+def read_attendance_rows():
+    """Read all attendance rows (excluding header) as a list of dicts."""
     if not os.path.exists(ATTENDANCE_FILE):
-        return False
+        return []
 
+    with open(ATTENDANCE_FILE, "r", newline="") as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
+
+def write_attendance_rows(rows):
+    """Overwrite the CSV file with the given rows (list of dicts)."""
+    with open(ATTENDANCE_FILE, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_HEADER)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def get_today_status(name, rows):
+    """
+    Look for today's row for this person.
+    Returns one of: "not_checked_in", "checked_in", "checked_out"
+    and the matching row (or None).
+    """
     today = datetime.now().strftime("%Y-%m-%d")
-    with open(ATTENDANCE_FILE, "r") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if len(row) >= 2 and row[0] == name and row[1] == today:
-                return True
-    return False
+
+    for row in rows:
+        if row["Name"] == name and row["Date"] == today:
+            if row.get("CheckOut"):
+                return "checked_out", row
+            return "checked_in", row
+
+    return "not_checked_in", None
 
 
-def mark_attendance(name):
-    """Append a new row: name, date, time."""
+def minutes_since(time_str):
+    """Return minutes elapsed since a HH:MM:SS time string (today)."""
+    checkin_time = datetime.strptime(time_str, "%H:%M:%S").time()
     now = datetime.now()
-    date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M:%S")
+    checkin_dt = now.replace(
+        hour=checkin_time.hour, minute=checkin_time.minute,
+        second=checkin_time.second, microsecond=0
+    )
+    return (now - checkin_dt).total_seconds() / 60
 
-    file_exists = os.path.exists(ATTENDANCE_FILE)
-    with open(ATTENDANCE_FILE, "a", newline="") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["Name", "Date", "Time"])
-        writer.writerow([name, date_str, time_str])
 
-    print(f"Attendance marked for {name} at {time_str}")
+def mark_checkin(name, rows):
+    """Add a new row with today's check-in time."""
+    now = datetime.now()
+    new_row = {
+        "Name": name,
+        "Date": now.strftime("%Y-%m-%d"),
+        "CheckIn": now.strftime("%H:%M:%S"),
+        "CheckOut": "",
+    }
+    rows.append(new_row)
+    write_attendance_rows(rows)
+    print(f"Checked IN: {name} at {new_row['CheckIn']}")
+
+
+def mark_checkout(name, row, rows):
+    """Update today's existing row with a check-out time."""
+    now = datetime.now()
+    row["CheckOut"] = now.strftime("%H:%M:%S")
+    write_attendance_rows(rows)
+    print(f"Checked OUT: {name} at {row['CheckOut']}")
+
+
+def process_recognition(name):
+    """
+    Decide whether to check this person in, check them out, or do
+    nothing (already checked out, or still within cooldown window).
+    Returns a short status string to display on screen.
+    """
+    rows = read_attendance_rows()
+    status, row = get_today_status(name, rows)
+
+    if status == "not_checked_in":
+        mark_checkin(name, rows)
+        return "Checked In"
+
+    if status == "checked_in":
+        gap = minutes_since(row["CheckIn"])
+        if gap >= CHECKOUT_MIN_GAP_MINUTES:
+            mark_checkout(name, row, rows)
+            return "Checked Out"
+        return f"In ({row['CheckIn']})"
+
+    return f"In {row['CheckIn']} / Out {row['CheckOut']}"
 
 
 def run_attendance_system():
     known_encodings, known_names = load_encodings()
-    print(f"Loaded {len(known_names)} known face(s): {known_names}")
+    print(f"Loaded {len(known_names)} known face(s): {sorted(set(known_names))}")
 
     video_capture = cv2.VideoCapture(0)
     if not video_capture.isOpened():
@@ -83,6 +151,7 @@ def run_attendance_system():
                 known_encodings, face_encoding, tolerance=MATCH_TOLERANCE
             )
             name = "Unknown"
+            status_label = ""
 
             # Find the closest match
             face_distances = face_recognition.face_distance(known_encodings, face_encoding)
@@ -97,17 +166,18 @@ def run_attendance_system():
             bottom *= 4
             left *= 4
 
-            # Draw box and name on the frame
+            # Handle check-in / check-out logic for recognized faces
+            if name != "Unknown":
+                status_label = process_recognition(name)
+
+            # Draw box and label on the frame
             color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
             cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+            label = f"{name} - {status_label}" if status_label else name
             cv2.putText(
-                frame, name, (left, top - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2
+                frame, label, (left, top - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2
             )
-
-            # Mark attendance if recognized and not already marked today
-            if name != "Unknown" and not already_marked_today(name):
-                mark_attendance(name)
 
         cv2.imshow("Face Attendance System - press q to quit", frame)
 

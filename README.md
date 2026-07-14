@@ -100,10 +100,15 @@ python encode_faces.py
 ```bash
 python attendance.py
 ```
-- Green box = recognized, name shown
+- Green box = recognized, name + status shown
 - Red box = unrecognized ("Unknown")
 - Press **q** to quit
-- First recognition each day → logged to `attendance.csv`
+- **Check-in / check-out logic:**
+  - First recognition of the day → logs **Check-in**
+  - A later recognition (after a cooldown, default **5 minutes**) → logs **Check-out**
+  - Recognitions within the cooldown just show the current check-in time on screen without creating a new entry
+  - Once checked out for the day, further recognitions just show the summary (no changes)
+  - Adjust the cooldown via `CHECKOUT_MIN_GAP_MINUTES` in `attendance.py`
 
 ---
 
@@ -146,5 +151,11 @@ MATCH_TOLERANCE = 0.6
 
 ---
 
+## 🚀 Possible Extensions
 
+- SQLite instead of CSV for attendance storage
+- Simple GUI (Tkinter or a web dashboard)
+- Export attendance reports (daily/weekly/monthly) with total hours calculated from check-in/check-out
+- Late arrival flagging (mark check-ins after a cutoff time)
 
+---
